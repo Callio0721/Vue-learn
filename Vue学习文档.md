@@ -73,7 +73,7 @@ export default {
 5. 执行选项式 API 的 `created` 钩子（此时 `this` 已能访问 `setup` 返回值）；
 6. 组件挂载阶段，执行 `onMounted`（Composition API）和选项式 `mounted`（此时 `this` 完全可用）。
 
-#### `<script setup>`
+#### `<script setup>` setup语法糖
 
 `<script setup>`是 Vue3 专为组合式 API 设计的语法糖，也就是是 setup 函数的「语法糖」。底层仍基于 setup 函数实现，但省略了繁琐的返回值和选项声明。  
 核心特性之一就是自动完成组件的默认导出 和 组件的默认注册所以不需要再去写export。 默认组件名称就是该文件的名称
@@ -115,4 +115,88 @@ const triggerChange = () => {
   <button @click="triggerChange">触发事件</button>
   <HelloWorld /> <!-- 自动注册的子组件 -->
 </template>
+```
+
+### ref()函数  
+ref() 是 Vue 3 中最核心的响应式 API 之一，专门用于为基本数据类型（数字、字符串、布尔值、null/undefined 等）创建响应式数据，也可兼容复杂类型（对象 / 数组），是 `<script setup>` 中实现数据响应式的基础工具。
+
+#### 核心作用
+解决 Vue 3 中「基本类型无法直接被 reactive 追踪响应式」的问题（因为 reactive 仅对对象 / 数组的属性劫持生效，基本类型无属性）。ref() 会将基本类型包裹成一个带 .value 属性的响应式对象（Ref 实例），通过劫持 .value 的读写操作实现响应式。
+
+
+```ts
+import { ref } from 'vue'
+
+// 1. 基本类型（核心场景）
+const count = ref(0) // 数字
+const name = ref('张三') // 字符串
+const isShow = ref(false) // 布尔值
+
+// 2. 兼容复杂类型（虽可用，但推荐优先用 reactive）
+const user = ref({ age: 18 }) // 对象
+const list = ref([1, 2, 3]) // 数组
+
+// ref对象示例 
+const count = ref(1)
+console.log(count)
+// 打印的内容：
+RefImpl {dep: Dep, __v_isRef: true, __v_isShallow: false, _rawValue: 1, _value: 1}
+```
+#### 基本用法
+1、定义响应式数据（如上面的代码块所示）  
+2、修改响应式数据  
+在 `<script>` 中：必须通过 .value 访问 / 修改（因为 ref 是包裹后的对象，.value 是真正存储值的属性）；
+在 `<template>` 中：Vue 会自动解包（省略 .value），直接用变量名即可。
+```ts
+// script 中修改
+count.value += 1 // 正确：修改数字
+name.value = '李四' // 正确：修改字符串
+user.value.age = 20 // 复杂类型：先 .value 拿到对象，再改属性
+list.value.push(4) // 数组同理
+
+<template>
+  <!-- 模板中自动解包，无需 .value -->
+  <div>计数：{{ count }}</div>
+  <div>姓名：{{ name }}</div>
+  <div>年龄：{{ user.age }}</div>
+</template>
+```
+### reactive()函数  
+reactive() 是 Vue 3 中核心的响应式 API，专门用于为复杂数据类型（对象、数组、Map/Set 等）创建「深度响应式对象」，是替代 Vue 2 data() 选项的核心方案之一，与 ref() 互补，共同支撑 Vue 3 的响应式系统。   
+
+#### 核心作用
+通过「Proxy 代理」劫持复杂对象的属性读写、添加、删除操作（而非对象本身），实现深度响应式 —— 即对象嵌套的子属性（如 user.info.age）也会被追踪，修改时自动触发视图更新。
+
+```ts
+import { reactive } from 'vue'
+
+// 1. 普通对象（核心场景）
+const userInfo = reactive({
+  name: '张三',
+  age: 18,
+  info: { // 嵌套对象，自动深度响应式
+    address: '北京'
+  }
+})
+
+// 2. 数组
+const list = reactive([1, 2, 3, { id: 1, text: '测试' }])
+
+// 3. 集合类型（Map/Set）
+const map = reactive(new Map([['key1', 'value1']]))
+const set = reactive(new Set([1, 2, 3]))
+
+// 无需像 ref() 那样加 .value，直接修改属性 / 元素即可（因为劫持的是属性操作）
+// 修改对象属性
+userInfo.name = '李四'
+userInfo.info.address = '上海' // 嵌套属性也生效
+
+// 修改数组
+list.push(4) // 新增元素
+list[3].text = '修改后的文本' // 数组嵌套对象
+list.splice(0, 1) // 数组方法正常触发响应式
+
+// 修改 Map/Set
+map.set('key2', 'value2')
+set.delete(2)
 ```
