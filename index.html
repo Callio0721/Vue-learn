@@ -1,13 +1,21 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="">
   <head>
-    <meta charset="UTF-8">
-    <link rel="icon" href="/favicon.ico">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer" />
+    <meta charset="UTF-8" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Vite App</title>
   </head>
   <body>
     <div id="app"></div>
+    <!-- <script> 标签有两种使用方式，二选一，不会同时生效：
+    用法 1：执行内部代码（内联脚本） 用法 2：加载并执行外部文件（外部脚本）
+    <script>
+      console.log('执行内部代码') 标签内写代码，浏览器直接执行
+    </script>
+    <script src="外部文件路径"></script>  标签为空，浏览器先下载外部文件，再执行文件里的代码 -->
+    <!-- 只要 <script> 标签有 src 属性，浏览器下载完文件后，会自动执行文件里的所有代码（就像代码写在标签内部一样） -->
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

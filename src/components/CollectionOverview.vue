@@ -147,13 +147,22 @@ const handleViewClick = () => {
 
 .view-btn {
   width: 100%;
-  height: 44px;
+  /* 移除固定height，改用padding控制按钮整体高度 */
+  padding: 10px 0; /* 上下各10px，总高度=文字行高24px + 10*2=44px，和原高度一致 */
   background: #00a1d6;
   color: #fff;
   border: none;
   font-size: 16px;
   cursor: pointer;
   transition: background 0.3s;
+
+  /* Flex保证文字在按钮内居中 */
+  display: flex;
+  align-items: center; /* 垂直居中 */
+  justify-content: center; /* 水平居中 */
+
+  /* 自定义文字行高（核心：设置文字自身的高度） */
+  line-height: 20px; /* 你可以任意修改这个值，比如20px/30px */
 }
 
 .view-btn:hover {
