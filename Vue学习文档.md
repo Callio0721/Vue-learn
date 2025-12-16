@@ -273,3 +273,81 @@ Vue 的模板渲染 / 响应式依赖追踪，是在组件初始化阶段完成�
 反之，若对 ref 执行 `obj.value = { name: '新值' }`（仅修改 `.value`），由于模板追踪的是「初始 ref 实例」的 `.value` 属性，修改该属性会触发 ref 内部的更新逻辑，模板能立即感知到变化并重新渲染。
 
 简单说：模板只认「初始化时绑定的那个目标」—— 对 `reactive` 是「初始 Proxy 代理对象」，对 `ref` 是「初始 ref 实例」；后续变量指向新的 `reactive` 代理对象或新的 `ref` 实例，模板不会自动切换追踪目标；但修改 `ref` 实例的 `.value`（无论替换成什么值/对象），因追踪的是实例本身，模板能感知到变化。
+
+### toRefs和toRef
+
+toRef 和 toRefs 是 Vue 3 中专门用于处理响应式对象解构 / 取值的 API，核心作用是保留响应式链接—— 解决直接解构 reactive 响应式对象导致的 “响应式丢失” 问题
+
+Vue 3 中，reactive 定义的响应式对象有个特点：直接解构 / 赋值会丢失响应式。比如：
+
+```ts
+import { reactive } from 'vue'
+
+// 响应式对象
+const person = reactive({ name: '张三', age: 20 })
+
+// 直接解构：name/age变成普通值，失去响应式
+const { name, age } = person
+
+// 修改解构后的变量，不会触发视图更新
+name = '李四'
+// 修改原对象，解构后的变量也不会同步更新
+person.age = 21
+console.log(age) // 还是 20（无响应式）
+```
+
+而 toRef/toRefs 就是为了破解这个问题而生。
+
+#### toRef：为单个属性创建响应式引用
+
+toRef(响应式对象, '属性名')：为响应式对象的单个属性创建一个 “响应式引用（Ref）”，和原属性保持双向绑定
+**特点**
+1、只针对单个属性，适合只需要解构某一个属性的场景；  
+2、即使原属性不存在（比如 person 中没有 gender），toRef 也会创建一个值为 undefined 的 Ref（不会报错）；  
+3、返回值是 Ref 类型，必须通过 .value 访问 / 修改值（和 ref 定义的变量一致）。在模板中可直接使用（自动解包，无需 .value）。
+
+```js
+import { reactive, toRef } from 'vue'
+
+const person = reactive({ name: '张三', age: 20 })
+
+// 为person.age创建响应式引用
+const ageRef = toRef(person, 'age')
+
+// 方式1：修改Ref的value，原对象会同步更新（响应式）
+ageRef.value = 21
+console.log(person.age) // 21（同步更新）
+
+// 方式2：修改原对象，Ref也会同步更新
+person.age = 22
+console.log(ageRef.value) // 22（同步更新）
+```
+
+#### toRefs：为多个属性批量创建响应式引用
+
+toRefs(响应式对象)：把响应式对象的所有属性批量转换成 Ref 类型，返回一个新对象（每个属性都是 Ref），解构后仍保留响应式。  
+**特点**  
+1、批量处理所有属性，适合需要解构多个属性的场景；  
+2、仅对已存在的属性创建 Ref（原对象没有的属性不会生成）；  
+3、返回的新对象中，每个属性都是 Ref 类型，模板中可直接使用（自动解包，无需 .value）。
+
+```ts
+import { reactive, toRefs } from 'vue'
+
+const person = reactive({ name: '张三', age: 20 })
+
+// 批量转换为Ref对象
+const personRefs = toRefs(person)
+// 解构：name/age都是Ref类型，保留响应式
+const { name, age } = personRefs
+
+// 修改Ref，原对象同步更新
+name.value = '李四'
+age.value = 21
+console.log(person.name) // 李四
+console.log(person.age) // 21
+
+// 修改原对象，Ref也同步更新
+person.name = '王五'
+console.log(name.value) // 王五
+```
