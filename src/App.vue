@@ -1,25 +1,38 @@
 <template>
-  <!-- 模板中直接使用 setup 里定义的响应式数据和方法 -->
-  <div class="main-page">
-    <!-- 卡片容器：横向/纵向排列（根据需求调整） -->
-    <div class="card-list">
-      <!-- 循环渲染多个通用卡片 -->
-      <CollectionOverview
-        v-for="(card, index) in cardList"
-        :key="index"
-        :card-title="card.cardTitle"
-        :card-type="card.cardType"
-        :sales-text="card.salesText"
-        :cover-img-url="card.coverImgUrl"
-        :cover-alt-text="card.coverAltText"
-        :cover-title="card.coverTitle"
-        :button-text="card.buttonText"
-        @view="handleCardView"
-      />
-    </div>
+  <div class="app-container">
+    <!-- 仅在根路径（/）显示跳转链接 -->
+    <template v-if="$route.path === '/'">
+      <h1>App.vue 主页面</h1>
+      <!-- 可点击的跳转链接（文字样式） -->
+      <p>
+        点击前往：
+        <router-link to="/test-learn" class="normal-link"> TestLearn 新页面 </router-link>
+      </p>
+
+      <!-- 模板中直接使用 setup 里定义的响应式数据和方法 -->
+      <div class="main-page">
+        <!-- 卡片容器：横向/纵向排列（根据需求调整） -->
+        <div class="card-list">
+          <!-- 循环渲染多个通用卡片 -->
+          <CollectionOverview
+            v-for="(card, index) in cardList"
+            :key="index"
+            :card-title="card.cardTitle"
+            :card-type="card.cardType"
+            :sales-text="card.salesText"
+            :cover-img-url="card.coverImgUrl"
+            :cover-alt-text="card.coverAltText"
+            :cover-title="card.coverTitle"
+            :button-text="card.buttonText"
+            @view="handleCardView"
+          />
+        </div>
+      </div>
+    </template>
+    <!-- 路由出口：TestLearn.vue 会渲染在这里（跳转后覆盖上述内容） -->
+    <router-view></router-view>
   </div>
 </template>
-
 <!-- vite-plugin-vue-setup-extend 是「Vue 组件编译阶段」的插件，只处理组件内部的 name 注入
 这个插件只做了「帮你自动设置组件 name 选项」这一件事，对 main.ts 里的 import、组件挂载、插件注册等逻辑，没有任何影响
 组件的 name 选项是 Vue 给组件定义的「标识名称」

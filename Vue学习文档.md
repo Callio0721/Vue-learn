@@ -351,3 +351,136 @@ console.log(person.age) // 21
 person.name = '王五'
 console.log(name.value) // 王五
 ```
+
+### v-model
+
+v-model 是 Vue 3 专门给表单元素设计的 “双向绑定语法糖”:  
+只需要把 v-model 绑定到 Vue 的响应式数据（ref/reactive 声明的），就能实现：  
+✅ 数据变 → 表单显示的值自动变（数据→视图）；  
+✅ 表单输入变 → 绑定的数据源自动变（视图→数据）。  
+不用写任何额外的事件监听、值赋值代码，Vue 帮你全搞定。
+
+如果不用 v-model，想实现双向绑定，你需要手动做两件事：  
+把数据塞到表单里（:value）；  
+监听表单输入，把新值同步回数据（@input）。
+
+```js
+// 没有用v-model实现
+<template>
+  <!-- 手动绑定值 + 手动监听输入 -->
+  <input
+    :value="msg"  <!-- 第一步：把数据给输入框 -->
+    @input="msg = $event.target.value"  <!-- 第二步：输入变化时更新数据 -->
+  />
+  <p>你输入的是：{{ msg }}</p>
+</template>
+
+<script setup>
+import { ref } from "vue";
+// 响应式数据（必须用 ref/reactive，普通变量不行）
+const msg = ref("");
+</script>
+
+// 使用v-model实现
+<template>
+  <!-- 一行搞定，不用写 :value 和 @input -->
+  <input v-model="msg" />
+  <p>你输入的是：{{ msg }}</p>
+</template>
+
+<script setup>
+import { ref } from "vue";
+const msg = ref("");
+</script>
+```
+
+### computed
+
+computed（计算属性）就是 Vue 里帮你根据已有数据算出新数据的 “懒人工具”—— 它会自动监听依赖的原始数据，一旦原始数据变了，它算出来的结果也会自动更新，而且还会缓存结果，不用重复计算。  
+同样的方式 方法 没有缓存，需要重新计算
+
+```js
+<template>
+  <!-- 直接用，和普通变量一样，不用加括号 -->
+  <div>1元硬币数量：<input v-model.number="coin1" type="number" /></div>
+  <div>5元纸币数量：<input v-model.number="bill5" type="number" /></div>
+  <div>总钱数：{{ totalMoney }}</div>
+</template>
+
+<script setup>
+// 1. 先导入需要的工具：ref（定义响应式数据）、computed（定义计算属性）
+import { ref, computed } from 'vue';
+
+// 2. 定义原始响应式数据（存钱罐数量）
+// ref 是 Vue3 定义简单数据（数字/字符串）的方式，.value 是它的特点
+const coin1 = ref(10); // 初始10个1元硬币
+const bill5 = ref(5);  // 初始5张5元纸币
+
+// 3. 定义计算属性 totalMoney
+// 只读的计算属性：只能根据 FirstName/LastName 算结果，不能直接改 FullName
+const totalMoney = computed(() => {
+  // 依赖 coin1 和 bill5，只要这两个变了，这里自动重新算
+  // 注意：ref 定义的变量，在 computed 里要用 .value 取值
+  return coin1.value * 1 + bill5.value * 5;
+});
+// 同样功能的方法，没有缓存
+function totalMoney1 (){
+  return coin1.value * 1 + bill5.value * 5;
+}
+</script>
+```
+
+computed 计算属性默认是只读的，但可以通过配置 get/set 方法变成「可读写」的
+
+```ts
+<script setup>
+import { ref, computed } from 'vue';
+const FirstName = ref('');
+const LastName = ref('');
+
+// 只读的计算属性：只能根据 FirstName/LastName 算结果，不能直接改 FullName
+const FullName = computed(() => FirstName.value + LastName.value);
+</script>
+```
+
+此时如果你尝试直接修改 FullName.value = '张三'，Vue 会报警告，而且修改无效 —— 因为只读计算属性只有 “读取逻辑”，没有 “修改逻辑”  
+如果想让 FullName 支持「直接修改」（比如输入 “张三”，自动拆分出姓和名），可以给 computed 传一个包含 get（读取）和 set（修改）的对象
+
+```ts
+<template>
+  姓：<input type="text" v-model="FirstName" /> <br />
+  名：<input type="text" v-model="LastName" /> <br />
+  全名：<input type="text" v-model="FullName" />
+</template>
+
+<script setup>
+import { ref, computed } from 'vue';
+const FirstName = ref('');
+const LastName = ref('');
+
+// 可读写的计算属性
+const FullName = computed({
+  // 1. get 方法：读取时的逻辑（和只读版一样，拼接姓名）
+  get() {
+    return FirstName.value + LastName.value;
+  },
+  // 2. set 方法：修改 FullName 时触发的逻辑（拆分姓名）
+  // newValue 就是你修改「全名」输入框时输入的新值—— 比如你在 “全名” 框里输入 “李四”，newValue 就等于字符串 "李四"；清空输入框，newValue 就是空字符串 ""
+  // 它是 Vue 自动传给 set 方法的，不用你手动定义，作用就是 “告诉 set 方法：用户想把 FullName 改成这个值”。
+  set(newValue) {
+    // 示例：假设输入的“全名”是“张三”，拆分为姓“张”、名“三”
+    if (newValue.length >= 1) {
+      FirstName.value = newValue.slice(0, 1); // 取第一个字当姓
+      LastName.value = newValue.slice(1);     // 剩下的当名
+    } else {
+      FirstName.value = '';
+      LastName.value = '';
+    }
+  }
+});
+</script>
+```
+
+可写计算属性的 set 方法必须接收一个参数（newValue），表示 “要修改成的新值”；  
+set 方法里不要直接改计算属性本身（比如 FullName.value = xxx），会导致死循环；  
+即使是可写计算属性，依然有「缓存特性」—— 只要依赖的原始数据（FirstName/LastName）不变，get 方法不会重复执行。
