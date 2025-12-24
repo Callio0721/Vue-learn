@@ -484,3 +484,189 @@ const FullName = computed({
 可写计算属性的 set 方法必须接收一个参数（newValue），表示 “要修改成的新值”；  
 set 方法里不要直接改计算属性本身（比如 FullName.value = xxx），会导致死循环；  
 即使是可写计算属性，依然有「缓存特性」—— 只要依赖的原始数据（FirstName/LastName）不变，get 方法不会重复执行。
+
+### watch
+
+watch: 核心是 Vue 中用于监听数据变化并执行对应操作的工具
+
+举个例子：
+把 watch 想象成 “数据监视器”：  
+你指定一个需要关注的 “数据目标”（比如一个变量、一个对象属性）；  
+当这个 “数据目标” 发生实质性变化时，watch 会自动触发你预先写好的 “处理函数”；  
+常用于数据变化后做异步操作、复杂逻辑处理（比如请求接口、修改其他关联数据、操作 DOM 等）。  
+比如：监听用户输入的搜索关键词，当关键词变化时，自动发起搜索请求获取结果，这就是 watch 的典型场景。
+
+watch能监视以下四种数据：  
+（1）ref定义的数据  
+（2）reactive定义的数据  
+（3）函数返回一个值（getter函数）  
+（4）一个包含上述内容的数组
+
+**（1）监视ref定义的数据**
+
+监听 基础类型 `ref（ref(10)、ref('张三')）`：直接传入 ref 变量即可，无需额外配置。  
+监听 对象类型 `ref（ref({ name: '张三' })）`：默认是浅监听，需手动配置 `{ deep: true }` 才能监听内部属性变化。  
+监听时无需通过 .value 访问（watch 内部会自动解析 ref 的 .value）。
+
+```ts
+<template>
+  <!-- 绑定一个输入框，修改 msg 的值 -->
+  <input v-model="msg" placeholder="输入内容测试watch" />
+</template>
+
+<script setup>
+// 1. 导入 watch（Vue3 组合式 API 需要手动导入）
+import { ref, watch } from 'vue';
+
+// 2. 定义需要被监听的数据（ref 定义基本类型数据）
+const msg = ref('初始值');
+
+// 3. 使用 watch 监听 msg 的变化
+const x = watch(
+  // 第一个参数：监听的目标（这里直接传入 ref 变量）
+  msg,
+  // 第二个参数：数据变化后的处理函数（newVal 新值，oldVal 旧值）
+  (newVal, oldVal) => {
+    console.log(`msg 变了！旧值：${oldVal}，新值：${newVal}`);
+    // 这里可以写复杂逻辑：比如请求接口、修改其他数据等
+    if (newVal.length > 5) {
+      console.log('输入内容超过5个字啦！');
+    }
+  }
+)
+// 监听对象类型 ref（需 deep: true 深度监听）
+const user = ref({
+  name: '张三',
+  age: 20
+})
+watch(user, (newVal, oldVal) => {
+  console.log('user变化了', newVal, oldVal) // newVal/oldVal 是 user.value（对象）
+}, { deep: true }) // 必须加 deep: true，否则修改内部属性不触发
+user.value.name = '李四' // 触发回调
+
+console.log(x)
+// 打印的内容如下：
+// () => {
+//     effect2.stop();
+//     if (scope && scope.active) {
+//       remove(scope.effects, effect2);
+//     }
+//   }
+// 是停止监视的函数，想要停止监视就自己调用自己，下面是一个例子
+
+const stopWatch = watch(
+  // 第一个参数：监听的目标（这里直接传入 ref 变量）
+  msg,
+  // 第二个参数：数据变化后的处理函数（newVal 新值，oldVal 旧值）
+  (newVal, oldVal) => {
+    console.log(`msg 变了！旧值：${oldVal}，新值：${newVal}`);
+    // 这里可以写复杂逻辑：比如请求接口、修改其他数据等
+    if (newVal.length > 5) {
+      console.log('输入内容超过5个字啦！现在停止监视');
+      stopWatch()
+    }
+  }
+)
+
+</script>
+```
+
+**（2）监听reactive 定义的数据**  
+直接监听 整个 reactive 对象：默认是深度监听，无需配置 `{ deep: true }`（配置了也无效，属于多余操作）。  
+监听时无法获取正确的 oldVal（由于 reactive 的响应式机制，newVal 和 oldVal 会指向同一个对象，旧值会被新值覆盖）。  
+若只需监听 reactive 对象的某个属性，建议使用「getter 函数」（对应第三种类型），而非直接监听整个对象。
+
+```ts
+import { reactive, watch } from 'vue'
+
+const person = reactive({
+  name: '张三',
+  address: {
+    city: '北京',
+  },
+})
+
+// 直接监听 reactive 整个对象（默认深度监听）
+watch(person, (newVal, oldVal) => {
+  console.log('person变化了', newVal, oldVal)
+  console.log(newVal === oldVal) // true，旧值和新值指向同一个对象
+})
+
+// 以下修改都会触发回调（深度监听特性）
+person.name = '李四' // 第一层属性修改
+person.address.city = '上海' // 嵌套属性修改
+```
+
+**（3）监视函数返回一个值（getter函数）**  
+适用场景：精准监听 reactive 对象的单个属性 / 嵌套属性、监听多个数据的组合值、监听计算后的衍生值。  
+监听逻辑：watch 会监听该函数返回值的变化，只有返回值改变时，才会触发回调。  
+监听对象属性时：默认是浅监听，若返回的是对象 / 数组，需配置 { deep: true } 才能监听其内部变化。
+
+```ts
+import { reactive, ref, watch } from 'vue'
+
+const person = reactive({
+  name: '张三',
+  address: {
+    city: '北京',
+  },
+})
+const count = ref(0)
+
+// 1. 精准监听 reactive 对象的单个属性（基础类型）
+watch(
+  () => person.name,
+  (newVal, oldVal) => {
+    console.log('姓名变化了', newVal, oldVal) // 能获取正确的旧值
+  },
+)
+person.name = '李四' // 触发回调
+
+// 2. 精准监听 reactive 对象的嵌套属性（对象类型，需 deep: true）
+watch(
+  () => person.address,
+  (newVal, oldVal) => {
+    console.log('地址变化了', newVal, oldVal)
+  },
+  { deep: true },
+)
+person.address.city = '上海' // 触发回调
+
+// 3. 监听多个数据的组合值
+watch(
+  () => `${person.name}-${count.value}`,
+  (newVal, oldVal) => {
+    console.log('组合值变化了', newVal, oldVal)
+  },
+)
+count.value++ // 触发回调，组合值从 "张三-0" 变为 "张三-1"
+```
+
+**（4）监视一个包含上述内容的数组**  
+当需要同时监听多个独立的数据，且希望它们中任意一个发生变化时都触发同一个回调，就可以使用「数组」作为 watch 的第一个参数  
+数组中的每一项：可以是 ref 变量、reactive 对象、getter 函数，支持混合搭配。  
+回调参数：newValue 和 oldValue 也会变成数组，数组顺序和监听的数组顺序一一对应。  
+触发条件：数组中任意一个数据发生变化，都会触发回调函数。
+
+```ts
+import { ref, reactive, watch } from 'vue'
+
+const count = ref(0)
+const person = reactive({ name: '张三' })
+const msg = ref('hello')
+
+// 监听包含多种类型的数组
+watch(
+  [count, () => person.name, msg], // 数组项：ref + getter 函数 + ref
+  (newValues, oldValues) => {
+    console.log('有数据变化了')
+    console.log('新值数组：', newValues) // [1, '李四', 'hi']（对应监听项顺序）
+    console.log('旧值数组：', oldValues) // [0, '张三', 'hello']
+  },
+)
+
+// 任意一个数据变化都会触发回调
+count.value++ // 触发
+person.name = '李四' // 触发
+msg.value = 'hi' // 触发
+```
