@@ -50,7 +50,7 @@ NaVid 要完成什么任务：
 
 ## 五、NaVid 的核心设计（怎么让机器人 “看视频、懂指令、做动作”）
 
-![Snipaste_2025-12-24_18-20-24](C:\Vue-learn\阅读论文\image\Snipaste_2025-12-24_18-20-24.png)
+![Snipaste_2025-12-24_18-20-24](E:\Personal-Learns\Vue\Vue-learn\阅读论文\image\Snipaste_2025-12-24_18-20-24.png)
 
 ### 1. 整体架构
 
